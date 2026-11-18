@@ -41,7 +41,7 @@ post_primaire:                   # diagnostic régional, sans répartition (donn
 
 depot:
   code_equipe: "Yennenga"        # nom d'équipe cité par les organisateurs (mail de rappel de clôture)
-  lien_github: ""                # dépôt public du code, cité dans le LISEZ-MOI (à renseigner)
+  lien_github: "https://github.com/danielcephas-hub/yennenga"   # dépôt public du code, cité dans le LISEZ-MOI
   defi: "D3"
   version: 1
 

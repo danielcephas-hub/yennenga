@@ -472,6 +472,9 @@ def controler(fichiers: list[Path]) -> list[str]:
             if nom.split(" > ")[-1].split("/")[-1] in ("LICENSE", "NOTICE"):
                 # seule exception voulue : le titulaire des droits, sur la ligne de copyright
                 donnees = bytes([10]).join(l for l in donnees.splitlines() if not l.lstrip().startswith(b"Copyright"))
+            lien = config()["depot"].get("lien_github", "")
+            if lien:  # autre exception voulue : l'adresse du dépôt GitHub public, citée telle quelle
+                donnees = donnees.replace(lien.encode("utf-8"), b"")
             bas = donnees.lower()
             for t in termes:
                 for forme in (t.lower().encode("utf-8"), t.lower().encode("utf-16-le"), t.lower().encode("latin-1", "ignore")):
