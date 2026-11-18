@@ -1,0 +1,39 @@
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Données : jamais versionnées (confidentialité, taille)
+data/raw/*
+data/interim/*
+data/processed/*
+data/external/*
+data/entrepot/
+!data/external/SOURCES.md
+!data/**/.gitkeep
+
+# Sorties régénérables
+outputs/powerbi/*
+outputs/figures/*
+!outputs/**/.gitkeep
+
+outputs/audit/*
+outputs/controles/*
+outputs/tableau_de_bord/*
+/depot/
+
+# Divers
+*.local.txt
+.env
+*.log
+~$*
+
+# Documentation générée par python -m dcb.documentation
+docs/documentation.html
+docs/documentation.pdf
+
+# Recherches documentaires (notes de travail)
+research_notes/
+reports/
+audits/

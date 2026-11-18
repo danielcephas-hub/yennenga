@@ -1,0 +1,22 @@
+# versions figées : celles avec lesquelles la chaîne et les 74 tests ont été validés (Python 3.13)
+pandas==3.1.1
+numpy==2.5.4
+scipy==1.18.1
+scikit-learn==1.9.1
+geopandas==1.2.0
+shapely==2.2.0
+pyogrio==0.13.0
+pyproj==3.8.0
+PuLP==2.9.0  # la 4.x n'embarque plus le solveur CBC
+pyarrow==26.0.1
+openpyxl==3.1.5
+PyYAML==6.0.3
+matplotlib==3.11.2
+rasterio==1.5.2
+pypdf==7.0.1  # contrôle avant dépôt et génération du PDF
+fastapi==0.163.1
+uvicorn[standard]==0.54.0
+python-multipart==0.0.33
+httpx==0.28.1  # tests du service
+pytest==9.2.0
+jupyterlab==4.6.6  # exploration seulement

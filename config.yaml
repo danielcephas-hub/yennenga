@@ -1,0 +1,104 @@
+# Paramètres de la chaîne de traitement. Aucun de ces chiffres n'est codé en dur dans le code.
+
+annee_reference: "2024-2025"     # dernière année observée
+annee_horizon: "2030-2031"       # rentrée 2030
+statut_cible: public             # secteur sur lequel portent les affectations de l'État (public | total)
+decoupage_analyse: annuaires_2017_2025  # découpage des calculs (referentiel/decoupages.csv) ; les données déposées dans un autre sont converties
+
+normes:
+  eleves_par_maitre: 50          # norme nationale : Tableau de bord de l'enseignement primaire 2023-2024 (DGESS), page 37
+  eleves_par_salle: 50           # HYPOTHESE : même valeur, une classe par maître
+
+indice:
+  # Indicateurs regroupés en dimensions : les indicateurs d'une même dimension sont très corrélés
+  # (rang de Spearman 0,99 et 0,91) ; sans regroupement, ils compteraient double.
+  dimensions:
+    surcharge: [eleves_par_maitre, eleves_par_salle]
+    bati: [part_salles_precaires, part_salles_mauvais_etat]
+  ponderations:                  # poids de chaque dimension (somme libre, renormalisée)
+    surcharge: 0.7
+    bati: 0.3
+  robustesse:
+    plage_poids_premiere_dimension: [0.5, 0.9]  # poids de la surcharge tiré uniformément dans cette plage
+    seuil_changement_tiers: 0.2  # rang « sensible » si la province change de tiers de priorité dans plus de 20 % des tirages
+  tirages_robustesse: 1000
+  graine: 2026
+
+prevision:
+  annees_test: 3                 # nombre d'années retenues pour le test sur le passé
+  fenetre_tendance: 5            # années utilisées pour la tendance
+  choc_depuis: 2015              # une province est dite « en choc » si, depuis cette année-là,
+  choc_seuil_baisse: 0.10        # son effectif a baissé de plus de 10 % d'une année sur l'autre
+  part_rattrapage_reouverture: 0.5  # scénario « réouverture » : part de l'écart au maximum historique rattrapée à l'horizon
+  essai_ml:                      # extension de la note : testée, retenue seulement si elle bat la référence naïve
+    apprentissage_minimal: 90    # nombre minimal de cas d'apprentissage pour entraîner un modèle à une origine
+    graine: 0
+
+post_primaire:                   # diagnostic régional, sans répartition (données à la maille région seulement)
+  norme_eleves_par_classe: 70    # norme nationale : Tableau de bord du post-primaire et du secondaire 2023-2024 (DGESS), page 47
+  seuil_part_sans_place: 0.10    # HYPOTHESE : signal si plus de 10 % des élèves du public général n'ont pas de place assise
+  seuil_perte_etablissements: 0.20  # HYPOTHESE : signal si la région a perdu plus de 20 % de ses établissements depuis 2019-20
+
+depot:
+  code_equipe: "Yennenga"        # nom d'équipe cité par les organisateurs (mail de rappel de clôture)
+  lien_github: ""                # dépôt public du code, cité dans le LISEZ-MOI (à renseigner)
+  defi: "D3"
+  version: 1
+
+sensibilite:                     # une hypothèse à la fois, les autres à leur valeur de référence
+  seuil_acces_construction: [0.0, 0.25, 0.35, 0.5]
+  eleves_par_maitre: [40, 45, 50] # 40 : norme indicative du PSEF 2017-2030 (p. 38) ; 50 : norme DGESS retenue
+  cout_enseignant_fcfa: [1800000, 2400000, 4000000]
+  budget_fcfa: 20000000000       # budget des variantes de coût d'un poste
+
+scenarios:                       # grille précalculée pour le simulateur
+  enseignants: [0, 1000, 2000, 3000, 4000, 6000]
+  salles: [0, 500, 1000, 1500, 2500, 4000]
+  demandes: [tendance, reouverture]
+
+optimisation:
+  enseignants_a_repartir: 3000   # N
+  salles_a_construire: 1500      # M
+  cout_salle_fcfa: 8600000       # médiane de 5 marchés communaux d'écoles primaires, 2025 (Quotidien des marchés publics n° 4226, DGCMEF) ; mobilier non précisé
+  cout_salle_plage_fcfa: [7200000, 9300000]  # fourchette observée dans ces 5 marchés
+  cout_salle_complexe_fcfa: 16666667  # variante « complexe de 3 salles tout compris » (bureau, magasin, latrines, 75 tables-bancs) : (47 039 700 + 2 960 300) / 3, bilan 2024 de la gratuité rapporté par Libreinfo, 22/11/2024
+  cout_enseignant_fcfa: 2400000  # enseignant débutant B1 en zone rurale, base + indemnités ≈ 200 103 FCFA/mois x 12 (CN-EPT/BF, Teacher Task Force, 6 oct. 2023, p. 6), hors cotisations employeur
+  cout_enseignant_plage_fcfa: [1800000, 4000000]  # 1,8 M : base + indemnités en ville ; 4,0 M : coût moyen d'un enseignant en 2019, tous ordres = masse salariale 357,1 Md / 89 105 enseignants (Stratégie nationale sur la question enseignante, MENAPLN 2020, tableaux 3 et 4, p. 10-11)
+  budget_fcfa: null              # null = pas de plafond de budget, seuls N et M contraignent
+  annees_budget: 5               # un poste est payé chaque année : il est compté sur cette durée dans le budget
+  budgets_scenarios_fcfa: [20000000000, 40000000000, 60000000000]  # scénarios « budget seul » : N et M libres, seul le budget contraint
+  ecart_relatif_tolere: 0.0001   # le solveur s'arrête quand la solution est à 0,01 % de l'optimum prouvé
+  scenario_demande: tendance     # tendance | reouverture
+  # Pénalité croissante : chaque palier franchi ajoute son poids. Avec des paliers fins, la pénalité croît
+  # comme le carré de la surcharge : un élève à 1,5 fois la norme coûte 26 fois plus qu'un élève juste
+  # au-dessus. Les moyens vont d'abord aux provinces les plus surchargées (équité), et les solutions
+  # équivalentes, qui rendraient le plan arbitraire, disparaissent presque.
+  paliers: {debut: 1.0, fin: 2.5, pas: 0.02, poids: 1.0}
+  departage: 0.00001             # non nul = résolution en deux temps : à pénalité égale, servir d'abord la province la plus chargée (plan unique)
+  un_maitre_par_salle: true      # un nouvel enseignant doit disposer d'une salle (libre, construite ou rouverte)
+  compter_salles_a_rouvrir: true # là où l'on rouvre d'abord (accès possible), les salles des écoles fermées accueillent des enseignants
+  seuil_acces_construction: 0.35 # HYPOTHESE : pas de construction si l'effectif est tombé sous 35 % du maximum historique (zone peu accessible)
+  absorption_max_part: null      # plafond d'enseignants nouveaux en part de l'effectif enseignant actuel (null = aucun)
+  temps_limite_s: 60
+
+service:                           # application en ligne (dcb.service) : calcul d'une répartition à la demande
+  temps_limite_s: 20               # temps laissé au solveur pour une demande
+  enseignants_max: 20000           # bornes des valeurs acceptées, pour écarter les demandes absurdes
+  salles_max: 20000
+  budget_max_fcfa: 500000000000
+  normes_acceptees: [40, 45, 50]
+  recul_prive_max: 50              # scénario « recul du privé » : au plus la moitié des élèves du privé passe dans le public
+  adresse_publique: https://yennenga.dcb.douniaintelligence.com   # citée dans la documentation, sert aux captures
+
+assistant:                         # assistant « Poser une question » (dcb.assistant) : explique et calcule, ne décide pas
+  actif: true                      # sans IA générative ni service extérieur : gratuit, immédiat, aucune donnée ne sort du serveur
+  longueur_question_max: 600       # caractères
+
+retrospectif:                      # test sur le passé (dcb.retrospectif) : origine, fin
+  periodes: [["2019-2020", "2024-2025"], ["2018-2019", "2023-2024"]]
+
+implantation:                      # accès à l'école et sites à construire (dcb.implantation)
+  rayon_km: 3                      # distance maximale domicile-école visée (piste du guide du Data Pack ; aucune norme officielle trouvée)
+  seuil_enfants_site: 150          # enfants de 6-11 ans à rapprocher au minimum pour proposer une école (≈ 3 classes de 50)
+  nombre_sites_max: 1000           # nombre maximal de sites proposés
+  seuil_fermeture_rouvrir: 0.2     # au-delà de 20 % d'écoles fermées dans la province (baisse depuis le maximum 2017-2025), on recommande d'abord de rouvrir

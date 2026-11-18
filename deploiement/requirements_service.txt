@@ -1,0 +1,14 @@
+# versions figées : celles avec lesquelles la chaîne et les 74 tests ont été validés (Python 3.13)
+pandas==3.1.1
+numpy==2.5.4
+scipy==1.18.1
+geopandas==1.2.0
+shapely==2.2.0
+pyogrio==0.13.0
+pyproj==3.8.0
+PuLP==2.9.0
+PyYAML==6.0.3
+openpyxl==3.1.5
+fastapi==0.163.1
+uvicorn[standard]==0.54.0
+python-multipart==0.0.33

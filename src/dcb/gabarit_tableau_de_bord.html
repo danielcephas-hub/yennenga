@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Répartition des enseignants et des salles de classe</title>
+<style>
+:root{
+  color-scheme:light;
+  --plan:#f9f9f7; --surface:#fcfcfb; --encre:#0b0b0b; --encre2:#52514e; --muet:#898781;
+  --grille:#e1e0d9; --axe:#c3c2b7; --bord:rgba(11,11,11,.10);
+  --serie1:#2a78d6; --serie2:#eb6834; --neutre:#c3c2b7;
+  --s1:#cde2fb; --s2:#86b6ef; --s3:#3987e5; --s4:#1c5cab; --s5:#0d366b;
+  --critique:#d03b3b; --bon:#006300;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plan);color:var(--encre);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:20px 24px 0;max-width:1280px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:16px;margin:0 0 10px}
+h3{font-size:14px;margin:0 0 8px;color:var(--encre2);font-weight:600}
+.sous{color:var(--encre2);margin:0 0 14px;max-width:900px}
+nav{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--grille)}
+nav button{font:inherit;background:none;border:0;border-bottom:3px solid transparent;padding:9px 14px;cursor:pointer;color:var(--encre2)}
+nav button[aria-selected=true]{color:var(--encre);border-bottom-color:var(--serie1);font-weight:600}
+main{max-width:1280px;margin:0 auto;padding:18px 24px 40px}
+section[hidden]{display:none}
+.carte-bloc,.bloc{background:var(--surface);border:1px solid var(--bord);border-radius:8px;padding:14px 16px}
+.deux{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+.filtres{display:flex;gap:18px;flex-wrap:wrap;align-items:end;margin:0 0 14px}
+.filtres label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--encre2)}
+select,button.action{font:inherit;padding:6px 10px;border:1px solid var(--axe);border-radius:6px;background:var(--surface);color:var(--encre)}
+button.action{cursor:pointer}
+button.action:hover{background:#f0efec}
+input[type=range]{width:240px;accent-color:var(--serie1)}
+.tuiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:0 0 16px}
+.tuile{background:var(--surface);border:1px solid var(--bord);border-radius:8px;padding:12px 14px}
+.tuile .lib{font-size:12.5px;color:var(--encre2)}
+.tuile .val{font-size:26px;font-weight:650;line-height:1.2;margin-top:2px}
+.tuile .note{font-size:12.5px;color:var(--encre2);margin-top:2px}
+.gain{color:var(--bon);font-weight:600}
+svg{display:block;width:100%;height:auto}
+.prov{stroke:var(--surface);stroke-width:1.2;cursor:pointer}
+.prov:hover,.prov.choisie{stroke:var(--encre);stroke-width:2}
+.legende{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--encre2);margin-top:8px;align-items:center}
+.legende i{display:inline-block;width:14px;height:14px;border-radius:3px;margin-right:5px;vertical-align:-2px}
+.legende .trait{width:18px;height:0;border-top:2px solid;border-radius:0;vertical-align:4px}
+.barres{max-height:560px;overflow:auto}
+.ligne-barre{display:grid;grid-template-columns:118px 1fr 52px;gap:8px;align-items:center;padding:2px 0;font-size:13px;cursor:pointer}
+.ligne-barre:hover{background:#f0efec}
+.ligne-barre .piste{position:relative;height:12px}
+.ligne-barre .barre{position:absolute;left:0;top:0;height:12px;background:var(--serie1);border-radius:0 4px 4px 0}
+.ligne-barre .norme{position:absolute;top:-3px;height:18px;border-left:2px solid var(--encre)}
+.ligne-barre .v{text-align:right;font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--grille);text-align:right;font-variant-numeric:tabular-nums}
+th{font-weight:600;color:var(--encre2);position:sticky;top:0;background:var(--surface);cursor:default}
+th:first-child,td:first-child,th.g,td.g{text-align:left}
+.defile{max-height:620px;overflow:auto}
+.intervalle{position:relative;height:10px;min-width:120px}
+.intervalle span{position:absolute;top:3px;height:4px;background:var(--neutre);border-radius:2px}
+.intervalle b{position:absolute;top:0;width:10px;height:10px;border-radius:50%;background:var(--serie1);transform:translateX(-5px);border:2px solid var(--surface)}
+.alerte{color:var(--critique);font-weight:600}
+#bulle{position:fixed;pointer-events:none;background:var(--encre);color:#fff;padding:7px 10px;border-radius:6px;font-size:12.5px;line-height:1.4;max-width:280px;display:none;z-index:9}
+#bulle b{font-weight:650}
+.segments{display:inline-flex;border:1px solid var(--axe);border-radius:6px;overflow:hidden}
+.segments button{font:inherit;border:0;background:var(--surface);padding:6px 12px;cursor:pointer;color:var(--encre2)}
+.segments button[aria-pressed=true]{background:var(--encre);color:#fff}
+.texte{max-width:860px}
+.texte li{margin:4px 0}
+.petit{font-size:12.5px;color:var(--encre2)}
+footer{max-width:1280px;margin:0 auto;padding:0 24px 30px;color:var(--muet);font-size:12.5px}
+@media (max-width:900px){.deux{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Où affecter les enseignants et construire les salles de classe ?</h1>
+  <p class="sous" id="chapeau"></p>
+  <nav role="tablist" id="onglets"></nav>
+</header>
+<main>
+  <section id="vue-diagnostic">
+    <div class="tuiles" id="tuiles-diag"></div>
+    <div class="filtres">
+      <label>Indicateur <select id="sel-indic"></select></label>
+      <label>Année scolaire <select id="sel-annee"></select></label>
+    </div>
+    <div class="deux">
+      <div class="carte-bloc"><h2 id="titre-carte"></h2><div id="carte-diag"></div><div class="legende" id="leg-diag"></div></div>
+      <div class="bloc"><h2>Classement des provinces</h2><p class="petit" id="note-barres"></p><div class="barres" id="barres-diag"></div></div>
+    </div>
+    <div class="bloc" style="margin-top:16px" id="fiche"></div>
+  </section>
+
+  <section id="vue-priorites" hidden>
+    <div class="bloc">
+      <h2>Indice de besoin : quelles provinces servir d'abord ?</h2>
+      <p class="petit texte" id="note-indice"></p>
+      <div class="defile"><table id="table-indice"></table></div>
+    </div>
+  </section>
+
+  <section id="vue-besoins" hidden>
+    <div class="filtres"><label>Hypothèse sur les effectifs <span class="segments" id="seg-besoins"></span></label></div>
+    <div class="tuiles" id="tuiles-besoins"></div>
+    <div class="deux">
+      <div class="carte-bloc"><h2 id="titre-carte-besoins"></h2><div id="carte-besoins"></div><div class="legende" id="leg-besoins"></div></div>
+      <div class="bloc"><h2>Besoins par province</h2><div class="defile"><table id="table-besoins"></table></div></div>
+    </div>
+  </section>
+
+  <section id="vue-simulateur" hidden>
+    <div class="filtres">
+      <label><span>Enseignants à répartir : <b id="lib-n"></b></span><input type="range" id="cur-n" min="0" step="1"></label>
+      <label><span>Salles à construire : <b id="lib-m"></b></span><input type="range" id="cur-m" min="0" step="1"></label>
+      <label>Hypothèse sur les effectifs <span class="segments" id="seg-sim"></span></label>
+      <button class="action" id="btn-export">Télécharger le plan (CSV)</button>
+    </div>
+    <div class="tuiles" id="tuiles-sim"></div>
+    <div class="bloc" style="margin:0 0 16px"><h2>Bilan comparé, à moyens égaux</h2><p class="petit texte" id="lecture-sim"></p><table id="bilan-sim"></table><p class="petit texte" id="bloquees-sim"></p></div>
+    <div class="deux">
+      <div class="carte-bloc"><h2 id="titre-carte-sim">Élèves par maître après la répartition optimisée</h2><div id="carte-sim"></div><div class="legende" id="leg-sim"></div></div>
+      <div class="bloc"><h2>Élèves par maître après répartition</h2>
+        <p class="petit">Chaque ligne compare les deux répartitions à moyens égaux. Le trait vertical marque la norme.</p>
+        <div class="legende" style="margin:0 0 8px"><span><i style="background:var(--serie1)"></i>Optimisée</span><span><i style="background:var(--serie2)"></i>Proportionnelle</span><span><i style="background:var(--neutre)"></i>Sans moyens nouveaux</span></div>
+        <div class="barres" id="points-sim"></div></div>
+    </div>
+    <div class="bloc" style="margin-top:16px"><h2>Plan de répartition détaillé</h2><div class="defile"><table id="table-sim"></table></div></div>
+  </section>
+
+  <section id="vue-post-primaire" hidden>
+    <div class="tuiles" id="tuiles-pp"></div>
+    <div class="filtres"><label>Indicateur <select id="sel-indic-pp"></select></label></div>
+    <div class="deux">
+      <div class="carte-bloc"><h2 id="titre-carte-pp"></h2><div id="carte-pp"></div><div class="legende" id="leg-pp"></div><p class="petit" id="note-carte-pp"></p></div>
+      <div class="bloc"><h2>Classement des régions</h2><p class="petit" id="note-barres-pp"></p><div class="barres" id="barres-pp"></div></div>
+    </div>
+    <div class="bloc" style="margin-top:16px" id="fiche-pp"></div>
+    <div class="bloc" style="margin-top:16px"><h2>Signaux par région</h2><p class="petit texte" id="note-table-pp"></p><div class="defile"><table id="table-pp"></table></div></div>
+    <div class="bloc texte petit" style="margin-top:16px" id="limites-pp"></div>
+  </section>
+
+  <section id="vue-methode" hidden><div class="bloc texte" id="methode"></div></section>
+</main>
+<footer id="pied"></footer>
+<div id="bulle"></div>
+
+<script>
+const D = /*__DONNEES__*/null;
+const M = D.meta, REF = M.annee_reference, HOR = M.annee_horizon;
+const NM = M.normes.eleves_par_maitre, NS = M.normes.eleves_par_salle;
+const $ = id => document.getElementById(id);
+const nb = (x, d = 0) => x == null || isNaN(x) ? '—' : Number(x).toLocaleString('fr-FR', {minimumFractionDigits: d, maximumFractionDigits: d});
+const joli = s => s.toLowerCase().replace(/(^|[\s-])([a-zà-ÿ])/g, (m, a, b) => a + b.toUpperCase()).replace(/ Du /g, ' du ');
+const RAMPE = ['--s1', '--s2', '--s3', '--s4', '--s5'].map(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim());
+const INDIC = [
+  {cle: 3, nom: 'Élèves par maître', unite: 'élèves par maître', d: 1, norme: NM},
+  {cle: 4, nom: 'Élèves par salle de classe', unite: 'élèves par salle', d: 1, norme: NS},
+  {cle: 5, nom: 'Salles en paille ou en banco (%)', unite: '% des salles', d: 1},
+  {cle: 6, nom: 'Salles en mauvais état (%)', unite: '% des salles', d: 1},
+  {cle: 7, nom: "Effectif par rapport au maximum historique (%)", unite: '% du maximum', d: 0, inverse: true},
+  {cle: 0, nom: "Nombre d'élèves", unite: 'élèves', d: 0},
+];
+const DEMANDES = {tendance: 'Scénario central', reouverture: 'Réouverture des écoles'};
+const etat = {vue: 'diagnostic', indic: 0, annee: REF, province: null, demande: 'tendance', n: 3, m: 3, indicPP: 0, region: null};
+const secteur = M.statut_cible === 'public' ? 'secteur public' : 'public et privé';
+
+/* ---------- info-bulle ---------- */
+const bulle = $('bulle');
+function montrer(e, html) { bulle.innerHTML = html; bulle.style.display = 'block'; deplacer(e); }
+function deplacer(e) { const x = Math.min(e.clientX + 14, innerWidth - 300), y = Math.min(e.clientY + 14, innerHeight - 120); bulle.style.left = x + 'px'; bulle.style.top = y + 'px'; }
+function cacher() { bulle.style.display = 'none'; }
+
+/* ---------- carte en classes ---------- */
+function seuils(valeurs) {
+  const v = valeurs.filter(x => x != null && !isNaN(x)).sort((a, b) => a - b);
+  if (!v.length) return [];
+  const q = p => v[Math.min(v.length - 1, Math.floor(p * v.length))];
+  return [...new Set([q(.2), q(.4), q(.6), q(.8)])];
+}
+function classe(x, s) { let i = 0; while (i < s.length && x >= s[i]) i++; return i; }
+function carte(cible, legende, valeurs, opt) {
+  // zeroAPart : les provinces à zéro forment une classe neutre, les classes portent sur les valeurs positives
+  const s = opt.seuils || seuils(Object.values(valeurs).filter(x => !opt.zeroAPart || x > 0));
+  const [L, H] = M.carte;
+  let h = `<svg viewBox="0 0 ${L} ${H}" role="img" aria-label="${opt.titre}">`;
+  for (const p of (opt.formes || D.provinces)) {
+    const x = valeurs[p.nom];
+    const vide = x == null || isNaN(x);
+    const c = vide ? '#e9e8e3' : opt.zeroAPart && x === 0 ? '#f0efec' : RAMPE[Math.min(RAMPE.length - 1, classe(x, s) + (RAMPE.length - 1 - s.length))];
+    h += `<path class="prov${(opt.formes ? opt.choisie : etat.province) === p.nom ? ' choisie' : ''}" d="${p.d}" fill="${c}" data-p="${p.nom}"/>`;
+  }
+  h += '</svg>';
+  cible.innerHTML = h;
+  cible.querySelectorAll('.prov').forEach(el => {
+    const p = el.dataset.p;
+    el.addEventListener('mousemove', e => montrer(e, opt.bulle(p)));
+    el.addEventListener('mouseleave', cacher);
+    el.addEventListener('click', () => { if (opt.choisir) opt.choisir(p); else etat.province = p; rendre(); if (opt.clic) opt.clic(p); });
+  });
+  const bornes = [null, ...s, null];
+  const debut = RAMPE.length - 1 - s.length;
+  let l = '';
+  for (let i = 0; i <= s.length; i++) {
+    const a = bornes[i], b = bornes[i + 1];
+    const t = a == null ? `moins de ${nb(b, opt.d)}` : b == null ? `${nb(a, opt.d)} et plus` : `${nb(a, opt.d)} à ${nb(b, opt.d)}`;
+    l += `<span><i style="background:${RAMPE[debut + i]}"></i>${t}</span>`;
+  }
+  legende.innerHTML = opt.zeroAPart
+    ? `<span><i style="background:#f0efec;border:1px solid var(--axe)"></i>${opt.libelleZero || 'aucun'}</span>` + l
+    : l + `<span><i style="background:#e9e8e3"></i>${opt.libelleVide || 'aucune école ouverte ou donnée absente'}</span>`;
+}
+
+/* ---------- vue diagnostic ---------- */
+function tuile(lib, val, note = '') { return `<div class="tuile"><div class="lib">${lib}</div><div class="val">${val}</div><div class="note">${note}</div></div>`; }
+function totaux(annee) {
+  let e = 0, m = 0, s = 0;
+  for (const v of Object.values(D.indic[annee])) { e += v[0]; m += v[1]; s += v[2]; }
+  return {e, m, s};
+}
+function rendreDiagnostic() {
+  const t = totaux(etat.annee), ind = INDIC[etat.indic], donnees = D.indic[etat.annee];
+  const auDessus = Object.values(donnees).filter(v => v[3] != null && v[3] > NM).length;
+  const val = Object.entries(donnees).map(([p, v]) => [p, v[3]]).filter(x => x[1] != null).sort((a, b) => b[1] - a[1]);
+  $('tuiles-diag').innerHTML =
+    tuile(`Élèves (${secteur}, ${etat.annee})`, nb(t.e)) +
+    tuile('Élèves par maître', nb(t.e / t.m, 1), `norme retenue : ${NM}`) +
+    tuile('Élèves par salle', nb(t.e / t.s, 1), `norme retenue : ${NS}`) +
+    tuile('Provinces au-dessus de la norme', `${auDessus} sur ${D.provinces.length}`, 'élèves par maître') +
+    tuile('Écart entre provinces', `${nb(val[0][1], 0)} contre ${nb(val[val.length - 1][1], 0)}`, `${joli(val[0][0])} et ${joli(val[val.length - 1][0])}, élèves par maître`);
+  const valeurs = {};
+  for (const [p, v] of Object.entries(donnees)) valeurs[p] = v[1] === 0 && ind.cle !== 0 && ind.cle !== 7 ? null : v[ind.cle];
+  $('titre-carte').textContent = `${ind.nom}, ${etat.annee}`;
+  const fiche = p => { const v = donnees[p]; return `<b>${joli(p)}</b> (${joli(D.provinces.find(x => x.nom === p).region)})<br>${ind.nom} : <b>${nb(v[ind.cle], ind.d)}</b><br>${nb(v[0])} élèves, ${nb(v[1])} maîtres, ${nb(v[2])} salles`; };
+  carte($('carte-diag'), $('leg-diag'), valeurs, {titre: ind.nom, d: ind.d, bulle: fiche});
+  const tri = Object.entries(valeurs).filter(x => x[1] != null).sort((a, b) => ind.inverse ? a[1] - b[1] : b[1] - a[1]);
+  const max = Math.max(...tri.map(x => x[1]), ind.norme || 0);
+  $('note-barres').textContent = ind.norme ? `Le trait vertical marque la norme (${ind.norme} ${ind.unite}).` : (ind.inverse ? 'Les provinces les plus éloignées de leur maximum historique sont en tête.' : '');
+  $('barres-diag').innerHTML = tri.map(([p, x]) =>
+    `<div class="ligne-barre" data-p="${p}"><span>${joli(p)}</span><span class="piste"><span class="barre" style="width:${100 * x / max}%"></span>${ind.norme ? `<span class="norme" style="left:${100 * ind.norme / max}%"></span>` : ''}</span><span class="v">${nb(x, ind.d)}</span></div>`).join('');
+  $('barres-diag').querySelectorAll('.ligne-barre').forEach(el => {
+    el.addEventListener('click', () => { etat.province = el.dataset.p; rendre(); $('fiche').scrollIntoView({behavior: 'smooth', block: 'nearest'}); });
+    el.addEventListener('mousemove', e => montrer(e, fiche(el.dataset.p)));
+    el.addEventListener('mouseleave', cacher);
+  });
+  rendreFiche();
+}
+
+/* ---------- fiche province : série et prévision ---------- */
+function rendreFiche() {
+  const p = etat.province;
+  if (!p) { $('fiche').innerHTML = '<h2>Fiche province</h2><p class="petit">Cliquez sur une province de la carte ou du classement pour afficher son historique et sa prévision.</p>'; return; }
+  const info = D.provinces.find(x => x.nom === p), v = D.indic[REF][p], ix = D.indice[p];
+  const obs = D.serie[p], pt = D.prev.tendance[p], pr = D.prev.reouverture[p];
+  const L = 900, H = 280, mg = {g: 62, d: 150, h: 14, b: 28};
+  const x0 = obs[0][0], x1 = pt[pt.length - 1][0];
+  const ymax = Math.max(...obs.map(o => o[1]), ...pt.map(o => o[3]), ...pr.map(o => o[1])) * 1.05;
+  const X = a => mg.g + (a - x0) / (x1 - x0) * (L - mg.g - mg.d), Y = y => H - mg.b - y / ymax * (H - mg.h - mg.b);
+  const ligne = pts => pts.map((q, i) => (i ? 'L' : 'M') + X(q[0]).toFixed(1) + ',' + Y(q[1]).toFixed(1)).join('');
+  const dernier = obs[obs.length - 1];
+  const bande = 'M' + [dernier, ...pt.map(q => [q[0], q[3]])].map(q => X(q[0]).toFixed(1) + ',' + Y(q[1]).toFixed(1)).join('L') +
+    'L' + [...pt.map(q => [q[0], q[2]]).reverse(), dernier].map(q => X(q[0]).toFixed(1) + ',' + Y(q[1]).toFixed(1)).join('L') + 'Z';
+  let g = '';
+  const pas = Math.pow(10, Math.floor(Math.log10(ymax))) / (ymax / Math.pow(10, Math.floor(Math.log10(ymax))) < 2.5 ? 2 : 1);
+  for (let y = 0; y <= ymax; y += pas) g += `<line x1="${mg.g}" x2="${L - mg.d}" y1="${Y(y)}" y2="${Y(y)}" stroke="var(--grille)"/><text x="${mg.g - 8}" y="${Y(y) + 4}" text-anchor="end" font-size="12" fill="var(--muet)">${nb(y)}</text>`;
+  for (let a = x0; a <= x1; a++) if ((a - x0) % 4 === 0 || a === x1) g += `<text x="${X(a)}" y="${H - 8}" text-anchor="middle" font-size="12" fill="var(--muet)">${a}-${String(a + 1).slice(2)}</text>`;
+  const finT = pt[pt.length - 1], finR = pr[pr.length - 1];
+  const ecartEtiq = Math.abs(Y(finT[1]) - Y(finR[1])) < 14 ? 14 : 0;
+  const svg = `<svg viewBox="0 0 ${L} ${H}" role="img" aria-label="Effectifs observés et prévus, ${joli(p)}">${g}
+    <path d="${bande}" fill="var(--serie1)" opacity=".13"/>
+    <path d="${ligne(obs)}" fill="none" stroke="var(--serie1)" stroke-width="2"/>
+    <path d="${ligne([dernier, ...pt])}" fill="none" stroke="var(--serie1)" stroke-width="2" stroke-dasharray="5 4"/>
+    <path d="${ligne([dernier, ...pr])}" fill="none" stroke="var(--serie2)" stroke-width="2" stroke-dasharray="5 4"/>
+    <circle cx="${X(dernier[0])}" cy="${Y(dernier[1])}" r="4" fill="var(--serie1)" stroke="var(--surface)" stroke-width="2"/>
+    <text x="${X(finT[0]) + 8}" y="${Y(finT[1]) + 4 + ecartEtiq}" font-size="12.5" fill="var(--encre)">Central : ${nb(finT[1])}</text>
+    <text x="${X(finR[0]) + 8}" y="${Y(finR[1]) + 4 - (ecartEtiq ? 4 : 0)}" font-size="12.5" fill="var(--encre)">Réouverture : ${nb(finR[1])}</text>
+    <rect id="zone-serie" x="${mg.g}" y="${mg.h}" width="${L - mg.g - mg.d}" height="${H - mg.h - mg.b}" fill="transparent"/>
+    <line id="repere" y1="${mg.h}" y2="${H - mg.b}" stroke="var(--axe)" visibility="hidden"/></svg>`;
+  $('fiche').innerHTML = `<h2>${joli(p)} — région ${joli(info.region)}</h2>
+    <p class="petit">Découpage de 2025 : province${info.prov2025.length > 1 ? 's' : ''} ${info.prov2025.join(' et ')}, région ${info.reg2025.join(', ')}.</p>
+    <div class="tuiles">${tuile(`Élèves (${secteur}, ${REF})`, nb(v[0]))}${tuile('Élèves par maître', nb(v[3], 1), v[3] > NM ? `<span class="alerte">au-dessus de la norme (${NM})</span>` : `norme : ${NM}`)}${tuile('Élèves par salle', nb(v[4], 1), v[4] > NS ? `<span class="alerte">au-dessus de la norme (${NS})</span>` : `norme : ${NS}`)}${tuile('Salles en paille ou banco', nb(v[5], 1) + ' %')}${tuile('Rang de priorité', ix ? `${ix[1]}ᵉ sur ${Object.keys(D.indice).length}` : '—', ix ? `entre ${ix[2]}ᵉ et ${ix[3]}ᵉ selon les pondérations` : '')}</div>
+    <h3>Élèves du primaire, public et privé : observé depuis ${x0}-${String(x0 + 1).slice(2)}, prévu jusqu'en ${HOR}</h3>${svg}
+    <div class="legende"><span><i class="trait" style="border-color:var(--serie1)"></i>Observé</span><span><i class="trait" style="border-color:var(--serie1);border-top-style:dashed"></i>Prévision, scénario central</span><span><i class="trait" style="border-color:var(--serie2);border-top-style:dashed"></i>Prévision, réouverture des écoles</span><span><i style="background:var(--serie1);opacity:.2"></i>Marge d'incertitude (8 cas sur 10 dans le test sur le passé)</span></div>`;
+  const zone = $('zone-serie'), repere = $('repere'), tout = new Map();
+  obs.forEach(q => tout.set(q[0], `observé : <b>${nb(q[1])}</b>`));
+  pt.forEach((q, i) => tout.set(q[0], `scénario central : <b>${nb(q[1])}</b> (${nb(q[2])} à ${nb(q[3])})<br>réouverture : <b>${nb(pr[i][1])}</b>`));
+  zone.addEventListener('mousemove', e => {
+    const r = zone.getBoundingClientRect(), a = Math.round(x0 + (e.clientX - r.left) / r.width * (x1 - x0));
+    if (!tout.has(a)) return;
+    repere.setAttribute('x1', X(a)); repere.setAttribute('x2', X(a)); repere.setAttribute('visibility', 'visible');
+    montrer(e, `<b>${a}-${a + 1}</b><br>${tout.get(a)}`);
+  });
+  zone.addEventListener('mouseleave', () => { cacher(); repere.setAttribute('visibility', 'hidden'); });
+}
+
+/* ---------- vue priorités ---------- */
+function rendrePriorites() {
+  const n = Object.keys(D.indice).length, v = D.indic[REF];
+  const P = M.indice.ponderations, somme = Object.values(P).reduce((a, b) => a + b, 0), plage = M.indice.robustesse.plage_poids_premiere_dimension;
+  $('note-indice').innerHTML = `L'indice combine deux dimensions de ${REF} (${secteur}), chacune moyenne de rangs : la <b>surcharge</b> (élèves par maître et par salle, ${nb(100 * P.surcharge / somme)} %) et l'<b>état du bâti</b> (salles en paille ou banco, salles en mauvais état, ${nb(100 * P.bati / somme)} %). Le classement a été rejoué ${nb(M.tirages)} fois avec un poids de la surcharge tiré au hasard entre ${nb(100 * plage[0])} % et ${nb(100 * plage[1])} % : la barre grise montre entre quels rangs la province se situe dans 9 cas sur 10. « Rang sensible » : la province change de tiers de priorité dans plus de ${nb(100 * M.indice.robustesse.seuil_changement_tiers)} % des tirages.`;
+  const lignes = Object.entries(D.indice).sort((a, b) => a[1][1] - b[1][1]).map(([p, x]) => {
+    const g = 100 * (x[2] - 1) / (n - 1), l = 100 * (x[3] - x[2]) / (n - 1), c = 100 * (x[1] - 1) / (n - 1);
+    return `<tr><td>${x[1]}</td><td class="g"><b>${joli(p)}</b></td><td class="g">${joli(D.provinces.find(q => q.nom === p).region)}</td><td>${nb(v[p][3], 1)}</td><td>${nb(v[p][4], 1)}</td><td>${nb(v[p][5], 1)}</td><td>${nb(v[p][6], 1)}</td><td>${nb(x[0], 2)}</td><td><div class="intervalle"><span style="left:${g}%;width:${Math.max(l, 1)}%"></span><b style="left:${c}%"></b></div></td><td class="g">${x[2]}ᵉ à ${x[3]}ᵉ${x[4] ? ' · rang sensible aux poids' : ''}</td></tr>`;
+  }).join('');
+  $('table-indice').innerHTML = `<thead><tr><th>Rang</th><th class="g">Province</th><th class="g">Région</th><th>Élèves par maître</th><th>Élèves par salle</th><th>Paille ou banco (%)</th><th>Mauvais état (%)</th><th>Indice</th><th class="g">Rang selon les pondérations</th><th class="g"></th></tr></thead><tbody>${lignes}</tbody>`;
+}
+
+/* ---------- vue besoins à l'horizon ---------- */
+function segments(cible, actif, clic) {
+  cible.innerHTML = Object.entries(DEMANDES).map(([k, lib]) => `<button aria-pressed="${k === actif}" data-k="${k}">${lib}</button>`).join('');
+  cible.querySelectorAll('button').forEach(b => b.addEventListener('click', () => clic(b.dataset.k)));
+}
+function besoins(demande) {
+  const out = {};
+  for (const [p, e] of Object.entries(D.horizon[demande])) {
+    const v = D.indic[REF][p];
+    out[p] = {e0: v[0], e: e, m: v[1], s: v[2], bm: Math.max(0, Math.ceil(e / NM) - v[1]), bs: Math.max(0, Math.ceil(e / NS) - v[2])};
+  }
+  return out;
+}
+function rendreBesoins() {
+  segments($('seg-besoins'), etat.demande, k => { etat.demande = k; rendre(); });
+  const b = besoins(etat.demande), tot = Object.values(b).reduce((a, x) => ({e0: a.e0 + x.e0, e: a.e + x.e, bm: a.bm + x.bm, bs: a.bs + x.bs}), {e0: 0, e: 0, bm: 0, bs: 0});
+  const cout = tot.bs * M.couts.salle / 1e9;
+  $('tuiles-besoins').innerHTML =
+    tuile(`Élèves attendus en ${HOR}`, nb(tot.e), `${tot.e >= tot.e0 ? '+' : ''}${nb(100 * (tot.e / tot.e0 - 1), 1)} % par rapport à ${REF} (${secteur})`) +
+    tuile('Enseignants à recruter ou redéployer', nb(tot.bm), `pour ramener chaque province à ${NM} élèves par maître`) +
+    tuile('Salles de classe à construire', nb(tot.bs), `pour ramener chaque province à ${NS} élèves par salle`) +
+    tuile('Coût indicatif des salles', nb(cout, 1) + ' Md FCFA', `${nb(M.couts.salle / 1e6, 1)} M FCFA par salle : médiane de 5 marchés publics d'écoles primaires en 2025`);
+  const valeurs = {}; for (const [p, x] of Object.entries(b)) valeurs[p] = x.bm;
+  $('titre-carte-besoins').textContent = `Enseignants manquants en ${HOR}`;
+  carte($('carte-besoins'), $('leg-besoins'), valeurs, {titre: 'Enseignants manquants', d: 0, zeroAPart: true, libelleZero: 'aucun enseignant manquant',
+    bulle: p => `<b>${joli(p)}</b><br>${nb(b[p].e)} élèves attendus en ${HOR}<br>Enseignants manquants : <b>${nb(b[p].bm)}</b><br>Salles manquantes : <b>${nb(b[p].bs)}</b>`});
+  const lignes = Object.entries(b).sort((a, c) => c[1].bm - a[1].bm).map(([p, x]) =>
+    `<tr><td class="g"><b>${joli(p)}</b></td><td>${nb(x.e0)}</td><td>${nb(x.e)}</td><td>${nb(x.bm)}</td><td>${nb(x.bs)}</td></tr>`).join('');
+  $('table-besoins').innerHTML = `<thead><tr><th class="g">Province</th><th>Élèves ${REF}</th><th>Élèves ${HOR}</th><th>Maîtres manquants</th><th>Salles manquantes</th></tr></thead><tbody>${lignes}</tbody>`;
+}
+
+/* ---------- vue simulateur ---------- */
+function scenarioCourant() {
+  const n = D.grille.enseignants[etat.n], m = D.grille.salles[etat.m];
+  return {n, m, s: D.scen[`${etat.demande}|${n}|${m}`]};
+}
+function rendreSimulateur() {
+  const {n, m, s} = scenarioCourant(), B = s.bilan, K = D.mesures_bilan;
+  const i = k => K.indexOf(k);
+  $('cur-n').max = D.grille.enseignants.length - 1; $('cur-n').value = etat.n; $('lib-n').textContent = nb(n);
+  $('cur-m').max = D.grille.salles.length - 1; $('cur-m').value = etat.m; $('lib-m').textContent = nb(m);
+  segments($('seg-sim'), etat.demande, k => { etat.demande = k; rendre(); });
+  const o = B.optimisee, p = B.proportionnelle, r = B.sans_moyens_nouveaux, b = B.besoins;
+  const v = (x, k) => x[i(k)];
+  const utilises = v(o, 'enseignants_attribues'), salles = v(o, 'salles_attribuees');
+  const coutSalles = salles * M.couts.salle / 1e9, coutPostes = utilises * M.couts.enseignant / 1e9;
+  $('tuiles-sim').innerHTML =
+    tuile('Moyens réellement utilisés', `${nb(utilises)} enseignants`, `${nb(salles)} salles${utilises < n ? ` · <b>${nb(n - utilises)} enseignants sans salle disponible</b> : construire davantage` : ''}`) +
+    tuile('Coût indicatif du plan', `${nb(coutSalles, 1)} Md FCFA`, `pour les salles, une fois ; puis ${nb(coutPostes, 1)} Md FCFA par an pour les postes (${nb(M.couts.salle / 1e6, 1)} M par salle, ${nb(M.couts.enseignant / 1e6, 1)} M par poste et par an)`) +
+    tuile('Province la plus chargée après répartition', `${nb(v(o, 'pire_ratio_eleves_maitre'), 0)} élèves par maître`, `contre ${nb(v(b, 'pire_ratio_eleves_maitre'), 0)} avec la règle des besoins et ${nb(v(p, 'pire_ratio_eleves_maitre'), 0)} avec la proportionnelle`);
+  const LIGNES = [
+    ['Élèves au-delà de la norme (élèves par maître)', 'eleves_au_dela_norme_maitre', 0, 'bas'],
+    ['Élèves par maître dans la province la plus chargée', 'pire_ratio_eleves_maitre', 0, 'bas'],
+    ['Inégalité entre provinces (indice de Gini, 0 = égalité)', 'gini_ratio_maitre', 3, 'bas'],
+    ['Provinces au-dessus de la norme', 'provinces_au_dessus_norme_maitre', 0, 'bas'],
+    ['Élèves dans une province à la norme (%)', 'part_eleves_province_conforme', 0, 'haut', 100],
+  ];
+  const meth = [['Sans moyens nouveaux', r], ['Proportionnelle aux élèves', p], ['Au prorata des besoins', b], ['Optimisée', o]];
+  $('bilan-sim').innerHTML = `<thead><tr><th class="g">Indicateur en ${HOR}</th>${meth.map(([l]) => `<th>${l}</th>`).join('')}</tr></thead><tbody>` +
+    LIGNES.map(([lib, k, d, sens, mult]) => {
+      const vals = meth.slice(1).map(([, x]) => v(x, k) * (mult || 1));
+      const best = sens === 'bas' ? Math.min(...vals) : Math.max(...vals);
+      return `<tr><td class="g">${lib}</td>${meth.map(([, x], j) => { const val = v(x, k) * (mult || 1); return `<td>${j && Math.abs(val - best) < 1e-9 ? '<b>' + nb(val, d) + '</b>' : nb(val, d)}</td>`; }).join('')}</tr>`;
+    }).join('') + '</tbody>';
+  const plusDeProv = v(o, 'provinces_au_dessus_norme_maitre') - v(p, 'provinces_au_dessus_norme_maitre');
+  $('lecture-sim').innerHTML = `Les trois répartitions disposent des mêmes ${nb(utilises)} enseignants et ${nb(salles)} salles. En gras, la meilleure valeur. ` +
+    `L'optimisation sert d'abord les provinces les plus chargées : elle obtient le plus faible écart entre provinces et la province la plus chargée la moins chargée. ` +
+    `Elle ne réduit pas plus le nombre total d'élèves au-delà de la norme qu'une règle simple au prorata des besoins. ` +
+    (plusDeProv > 0 ? `En contrepartie, elle laisse ${nb(v(o, 'provinces_au_dessus_norme_maitre'))} provinces légèrement au-dessus de la norme, contre ${nb(v(p, 'provinces_au_dessus_norme_maitre'))} avec la proportionnelle, qui achève de mettre à la norme des provinces déjà proches au lieu de soulager les plus surchargées.` : '');
+  const bloquees = Object.keys(s.alloc).filter(q => !D.construction[q]).map(q => {
+    const v0 = D.indic[REF][q], a = s.alloc[q], e = D.horizon[etat.demande][q];
+    return {q, r: v0[1] + a[0] ? e / (v0[1] + a[0]) : null};
+  }).filter(x => x.r != null && x.r > NM).sort((x, y) => y.r - x.r);
+  $('bloquees-sim').innerHTML = bloquees.length ? `<b>Construction non programmée</b> (effectif inférieur à ${nb(100 * M.seuil_acces)} % du maximum historique, à confirmer avec les services de l'éducation en situation d'urgence), province encore au-dessus de la norme : ${bloquees.map(x => `${joli(x.q)} (${nb(x.r, 0)})`).join(', ')}. Ces provinces ne reçoivent d'enseignants qu'à hauteur de leurs salles libres.` : '';
+  const valeurs = {};
+  for (const [q, a] of Object.entries(s.alloc)) { const v0 = D.indic[REF][q], e = D.horizon[etat.demande][q]; valeurs[q] = v0[1] + a[0] ? e / (v0[1] + a[0]) : null; }
+  const fiche = q => { const a = s.alloc[q]; return `<b>${joli(q)}</b> : ${nb(valeurs[q], 1)} élèves par maître après répartition<br>Optimisée : <b>+${nb(a[0])}</b> enseignants, <b>+${nb(a[1])}</b> salles<br>Proportionnelle : +${nb(a[2])} enseignants, +${nb(a[3])} salles${D.construction[q] ? '' : '<br>Construction non programmée (effectif sous ' + nb(100 * M.seuil_acces) + ' % du maximum historique)'}`; };
+  carte($('carte-sim'), $('leg-sim'), valeurs, {titre: 'Élèves par maître après répartition', d: 1, bulle: fiche});
+  const E = D.horizon[etat.demande];
+  const lignes = Object.entries(s.alloc).map(([q, a]) => {
+    const v = D.indic[REF][q];
+    return {q, e: E[q], m: v[1], sa: v[2], a, r0: v[1] ? E[q] / v[1] : null, ro: v[1] + a[0] ? E[q] / (v[1] + a[0]) : null, rp: v[1] + a[2] ? E[q] / (v[1] + a[2]) : null};
+  });
+  // l'échelle ne part pas de zéro : ce sont des positions (points), pas des longueurs de barres
+  const tous = lignes.flatMap(l => [l.r0, l.ro, l.rp]).filter(x => x != null);
+  const min = Math.min(...tous, NM) - 3, max = Math.max(...tous, NM) + 3;
+  const pos = x => 100 * (x - min) / (max - min);
+  const point = (x, c, z) => x == null ? '' : `<span style="position:absolute;left:${pos(x)}%;top:1px;width:10px;height:10px;border-radius:50%;background:${c};transform:translateX(-5px);border:2px solid var(--surface);z-index:${z}"></span>`;
+  $('points-sim').innerHTML = `<div class="ligne-barre" style="cursor:default"><span></span><span class="piste" style="font-size:12px;color:var(--muet)"><span style="position:absolute;left:0">${nb(min, 0)}</span><span style="position:absolute;left:${pos(NM)}%;transform:translateX(-50%)">norme ${NM}</span><span style="position:absolute;right:0">${nb(max, 0)}</span></span><span class="v petit">optimisée</span></div>` +
+    lignes.slice().sort((x, y) => (y.r0 || 0) - (x.r0 || 0)).map(l =>
+    `<div class="ligne-barre" data-p="${l.q}"><span>${joli(l.q)}</span><span class="piste"><span style="position:absolute;left:${pos(Math.min(l.ro ?? l.r0, l.r0))}%;width:${Math.abs(pos(l.r0 || min) - pos(l.ro ?? l.r0 ?? min))}%;top:5px;height:2px;background:var(--axe)"></span><span class="norme" style="left:${pos(NM)}%"></span>${point(l.r0, 'var(--neutre)', 1)}${point(l.rp, 'var(--serie2)', 2)}${point(l.ro, 'var(--serie1)', 3)}</span><span class="v">${nb(l.ro, 1)}</span></div>`).join('');
+  $('points-sim').querySelectorAll('.ligne-barre[data-p]').forEach(el => {
+    const l = lignes.find(x => x.q === el.dataset.p);
+    el.addEventListener('mousemove', e => montrer(e, `<b>${joli(l.q)}</b> — élèves par maître en ${HOR}<br>Sans moyens nouveaux : ${nb(l.r0, 1)}<br>Proportionnelle : ${nb(l.rp, 1)}<br>Optimisée : <b>${nb(l.ro, 1)}</b>`));
+    el.addEventListener('mouseleave', cacher);
+  });
+  $('table-sim').innerHTML = `<thead><tr><th class="g">Province</th><th class="g">Région</th><th>Élèves ${HOR}</th><th>Maîtres actuels</th><th>Salles actuelles</th><th>Enseignants attribués</th><th>Salles attribuées</th><th>Élèves par maître après</th><th>Proportionnelle : enseignants</th><th>Proportionnelle : élèves par maître</th></tr></thead><tbody>` +
+    lignes.slice().sort((x, y) => y.a[0] - x.a[0] || y.a[1] - x.a[1]).map(l => `<tr><td class="g"><b>${joli(l.q)}</b></td><td class="g">${joli(D.provinces.find(x => x.nom === l.q).region)}</td><td>${nb(l.e)}</td><td>${nb(l.m)}</td><td>${nb(l.sa)}</td><td><b>${nb(l.a[0])}</b></td><td><b>${nb(l.a[1])}</b></td><td>${nb(l.ro, 1)}</td><td>${nb(l.a[2])}</td><td>${nb(l.rp, 1)}</td></tr>`).join('') + '</tbody>';
+  $('btn-export').onclick = () => {
+    const tete = ['province', 'region', 'provinces_2025', `eleves_${HOR}`, 'maitres_actuels', 'salles_actuelles', 'enseignants_attribues', 'salles_attribuees', 'eleves_par_maitre_apres', 'proportionnelle_enseignants', 'proportionnelle_salles'];
+    const csv = [tete.join(';'), ...lignes.map(l => { const info = D.provinces.find(x => x.nom === l.q); return [l.q, info.region, info.prov2025.join(' + '), l.e, l.m, l.sa, l.a[0], l.a[1], l.ro == null ? '' : l.ro.toFixed(1).replace('.', ','), l.a[2], l.a[3]].join(';'); })].join('\r\n');
+    const lien = document.createElement('a');
+    lien.href = URL.createObjectURL(new Blob(['﻿' + csv], {type: 'text/csv;charset=utf-8'}));
+    lien.download = `plan_repartition_${n}_enseignants_${m}_salles_${etat.demande}.csv`;
+    lien.click();
+  };
+}
+
+/* ---------- vue post-primaire (maille région) ---------- */
+const PPA = Object.keys(D.pp).sort(), PPR = PPA[PPA.length - 1], PPP = PPA[0];
+const NPP = M.post_primaire.norme_eleves_par_classe, NAT = 'BURKINA FASO';
+const cent = x => x == null ? null : 100 * x;
+const INDIC_PP = [
+  {nom: 'Élèves par classe en 6ᵉ', f: r => r.eleves_par_classe_6e, d: 0, norme: NPP, unite: 'élèves par classe', champ: 'public, enseignement général'},
+  {nom: 'Élèves par classe, ensemble du post-primaire', f: r => r.eleves_par_classe_pp, d: 0, norme: NPP, unite: 'élèves par classe', champ: 'public, enseignement général'},
+  {nom: 'Élèves sans place assise (%)', f: r => cent(r.part_eleves_sans_place), d: 1, champ: 'public, enseignement général, post-primaire et secondaire'},
+  {nom: "Perte d'établissements depuis 2019-2020 (%)", f: r => r.evolution_etablissements_2019 == null ? null : -100 * r.evolution_etablissements_2019, d: 1, champ: 'post-primaire et secondaire, public et privé ; une valeur négative est un gain'},
+  {nom: 'Élèves par salle de classe', f: r => r.eleves_par_salle, d: 1, champ: 'post-primaire et secondaire, public et privé'},
+  {nom: "Établissements sans point d'eau potable (%)", f: r => r.pct_eau_potable == null ? null : 100 - r.pct_eau_potable, d: 1, champ: 'post-primaire et secondaire'},
+  {nom: 'Établissements sans électricité (%)', f: r => r.pct_electricite == null ? null : 100 - r.pct_electricite, d: 1, champ: 'post-primaire et secondaire'},
+  {nom: 'Élèves du post-primaire', f: r => r.eleves_pp, d: 0, champ: 'public et privé'},
+];
+const SIGNAUX = {signal_6e_au_dessus_norme: `6ᵉ au-dessus de ${NPP} élèves par classe`,
+  signal_places_manquantes: `plus de ${nb(100 * M.post_primaire.seuil_part_sans_place)} % d'élèves sans place assise`,
+  signal_perte_etablissements: `plus de ${nb(100 * M.post_primaire.seuil_perte_etablissements)} % d'établissements perdus depuis 2019-2020`};
+const evol = (a, b, d = 1) => a == null || b == null || !b ? '' : `${a >= b ? '+' : ''}${nb(100 * (a / b - 1), d)} %`;
+function allerFichePP(r) { etat.region = r; rendre(); $('fiche-pp').scrollIntoView({behavior: 'smooth', block: 'nearest'}); }
+function rendrePostPrimaire() {
+  const R = D.pp[PPR], P = D.pp[PPP], n = R[NAT], ind = INDIC_PP[etat.indicPP];
+  const regs = Object.keys(R).filter(r => r !== NAT);
+  const au6 = regs.filter(r => R[r].eleves_par_classe_6e > NPP);
+  $('tuiles-pp').innerHTML =
+    tuile(`Élèves du post-primaire (${PPR})`, nb(n.eleves_pp), `${evol(n.eleves_pp, P[NAT].eleves_pp)} par rapport à ${PPP}`) +
+    tuile('Élèves par classe en 6ᵉ', nb(n.eleves_par_classe_6e), `norme : ${NPP} · ${au6.length} région${au6.length > 1 ? 's' : ''} au-dessus`) +
+    tuile('Élèves sans place assise', nb(n.deficit_places), `${nb(cent(n.part_eleves_sans_place), 1)} % du public général, alors que ${nb(n.excedent_places)} places restent libres ailleurs`) +
+    tuile('Établissements', nb(n.etablissements), `${nb(n.etablissements - n.etablissements_2019)} depuis 2019-2020 (${evol(n.etablissements, n.etablissements_2019)})`) +
+    tuile('Enseignants', nb(n.enseignants), `${nb(n.pct_qualifies, 1)} % qualifiés · post-primaire et secondaire`);
+  const valeurs = {};
+  for (const r of regs) valeurs[r] = ind.f(R[r]);
+  $('titre-carte-pp').textContent = `${ind.nom}, ${PPR}`;
+  $('note-carte-pp').textContent = `Champ : ${ind.champ}.`;
+  const bulleR = r => `<b>${joli(r)}</b><br>${ind.nom} : <b>${nb(valeurs[r], ind.d)}</b><br>${nb(R[r].eleves_pp)} élèves du post-primaire, ${nb(R[r].etablissements)} établissements`;
+  carte($('carte-pp'), $('leg-pp'), valeurs, {titre: ind.nom, d: ind.d, bulle: bulleR, formes: D.regions, choisie: etat.region,
+    choisir: r => { etat.region = r; }, libelleVide: 'donnée absente',
+    clic: () => $('fiche-pp').scrollIntoView({behavior: 'smooth', block: 'nearest'})});
+  const tri = Object.entries(valeurs).filter(x => x[1] != null).sort((a, b) => b[1] - a[1]);
+  const min = Math.min(0, ...tri.map(x => x[1])), etendue = Math.max(...tri.map(x => x[1]), ind.norme || 0) - min;
+  $('note-barres-pp').textContent = ind.norme ? `Le trait vertical marque la norme nationale (${ind.norme} ${ind.unite}).` : 'Les régions les plus préoccupantes sont en tête.';
+  $('barres-pp').innerHTML = tri.map(([r, x]) =>
+    `<div class="ligne-barre" data-r="${r}"><span>${joli(r)}</span><span class="piste"><span class="barre" style="left:${100 * (Math.min(x, 0) - min) / etendue}%;width:${100 * Math.abs(x) / etendue}%${x < 0 ? ';background:var(--neutre)' : ''}"></span>${ind.norme ? `<span class="norme" style="left:${100 * (ind.norme - min) / etendue}%"></span>` : ''}</span><span class="v">${nb(x, ind.d)}</span></div>`).join('');
+  $('barres-pp').querySelectorAll('.ligne-barre').forEach(el => {
+    el.addEventListener('click', () => allerFichePP(el.dataset.r));
+    el.addEventListener('mousemove', e => montrer(e, bulleR(el.dataset.r)));
+    el.addEventListener('mouseleave', cacher);
+  });
+  rendreFichePP();
+  $('note-table-pp').textContent = `Un signal est levé quand un seuil est franchi en ${PPR}. La norme de ${NPP} élèves par classe est la norme nationale citée par la DGESS ; les deux autres seuils sont des hypothèses de travail, modifiables dans le fichier de paramètres.`;
+  const lignes = regs.sort((a, b) => R[b].nombre_signaux - R[a].nombre_signaux || R[b].eleves_par_classe_6e - R[a].eleves_par_classe_6e).map(r => {
+    const x = R[r], s = Object.keys(SIGNAUX).filter(k => x[k]).map(k => SIGNAUX[k]);
+    return `<tr data-r="${r}" style="cursor:pointer"><td class="g"><b>${joli(r)}</b></td><td>${nb(x.eleves_pp)}</td><td${x.eleves_par_classe_6e > NPP ? ' class="alerte"' : ''}>${nb(x.eleves_par_classe_6e)}</td><td>${nb(x.eleves_par_classe_pp)}</td><td>${nb(cent(x.part_eleves_sans_place), 1)}</td><td>${nb(x.etablissements_2019)} → ${nb(x.etablissements)}</td><td>${evol(x.etablissements, x.etablissements_2019)}</td><td>${nb(x.pct_eau_potable, 1)}</td><td class="g">${s.length ? s.join(' ; ') : '—'}</td></tr>`;
+  }).join('');
+  $('table-pp').innerHTML = `<thead><tr><th class="g">Région</th><th>Élèves du post-primaire</th><th>Élèves par classe en 6ᵉ</th><th>Élèves par classe, post-primaire</th><th>Sans place assise (%)</th><th>Établissements 2019-20 → ${PPR.slice(0, 4)}-${PPR.slice(7)}</th><th>Évolution</th><th>Point d'eau potable (%)</th><th class="g">Signaux</th></tr></thead><tbody>${lignes}</tbody>`;
+  $('table-pp').querySelectorAll('tr[data-r]').forEach(el => el.addEventListener('click', () => allerFichePP(el.dataset.r)));
+  $('limites-pp').innerHTML = `<h3>Lire ces chiffres</h3><ul>
+    <li><b>Maille région.</b> Les publications récentes du post-primaire ne descendent pas à la province ; l'annuaire 2019-2020 ne le fait que pour une partie d'entre elles. Le post-primaire fait donc l'objet d'un diagnostic, pas d'une répartition chiffrée.</li>
+    <li><b>Enseignants.</b> Ils sont comptés pour le post-primaire et le secondaire ensemble, hors vacataires, alors que le privé repose largement sur eux : un ratio d'élèves par enseignant ne serait pas comparable d'une région à l'autre et n'est pas affiché.</li>
+    <li><b>Places assises.</b> Le déficit coexiste avec un excédent dans d'autres établissements de la même région : une partie du problème se règle par le transfert de tables-bancs, sans construction.</li>
+    <li><b>Correction de la source.</b> Dans le tableau des places assises ${PPR}, les libellés des quatre régions du Centre sont décalés ; ils ont été rétablis, contrôle à l'appui (voir la documentation).</li>
+    <li><b>Insécurité.</b> Les chiffres décrivent les établissements ouverts : un ratio modéré dans une région qui a perdu des établissements peut cacher des élèves déscolarisés.</li></ul>
+    <p>Source : tableaux de bord de l'enseignement post-primaire et secondaire ${PPP} et ${PPR} (DGESS).</p>`;
+}
+function rendreFichePP() {
+  const r = etat.region;
+  if (!r) { $('fiche-pp').innerHTML = '<h2>Fiche région</h2><p class="petit">Cliquez sur une région de la carte, du classement ou du tableau pour comparer ses deux dernières années.</p>'; return; }
+  const a = D.pp[PPP][r], b = D.pp[PPR][r];
+  const L = [['Élèves du post-primaire', 'eleves_pp', 0], ['Élèves du post-primaire et du secondaire', 'eleves_pp_sec', 0], ['Établissements (post-primaire et secondaire)', 'etablissements', 0],
+    ['Salles de classe (post-primaire et secondaire)', 'salles', 0], ['Élèves par classe en 6ᵉ (public, général)', 'eleves_par_classe_6e', 0],
+    ['Élèves par classe, post-primaire (public, général)', 'eleves_par_classe_pp', 0], ['Élèves sans place assise (public, général)', 'deficit_places', 0],
+    ['Places assises libres dans d\'autres établissements de la région', 'excedent_places', 0], ['Enseignants (post-primaire et secondaire)', 'enseignants', 0],
+    ["Établissements avec point d'eau potable (%)", 'pct_eau_potable', 1], ['Établissements avec latrines (%)', 'pct_latrines', 1], ['Établissements avec électricité (%)', 'pct_electricite', 1]];
+  const lignes = L.map(([lib, k, d]) => `<tr><td class="g">${lib}</td><td>${nb(a[k], d)}</td><td>${nb(b[k], d)}</td><td>${d ? '' : evol(b[k], a[k])}</td></tr>`).join('');
+  $('fiche-pp').innerHTML = `<h2>${joli(r)} — post-primaire</h2>
+    <p class="petit">Depuis 2019-2020 : ${nb(b.etablissements - b.etablissements_2019)} établissements (${evol(b.etablissements, b.etablissements_2019)}), ${nb(b.salles - b.salles_2019)} salles de classe (${evol(b.salles, b.salles_2019)}).</p>
+    <table><thead><tr><th class="g">Mesure</th><th>${PPP}</th><th>${PPR}</th><th>Évolution</th></tr></thead><tbody>${lignes}</tbody></table>`;
+}
+
+/* ---------- vue méthode ---------- */
+function rendreMethode() {
+  const noms = {naive: 'Référence : effectif inchangé', tendance_lineaire: 'Tendance linéaire', croissance_amortie: 'Croissance amortie', demographique: 'Population de 6 à 11 ans projetée (INSD)'};
+  const nbGroupe = g => Object.values(D.groupes).filter(x => x === g).length;
+  const tableFiab = g => { const f = D.fiabilite[g]; return `<table><thead><tr><th class="g">Méthode</th>${Object.values(f)[0].map((_, i) => `<th>à ${i + 1} an${i ? 's' : ''}</th>`).join('')}</tr></thead><tbody>${Object.entries(f).map(([k, v]) => `<tr><td class="g">${k === M.methode_prevision[g] ? '<b>' + noms[k] + ' — retenue</b>' : noms[k]}</td>${v.map(x => `<td>${nb(x, 1)}</td>`).join('')}</tr>`).join('')}</tbody></table>`; };
+  $('methode').innerHTML = `<h2>Méthode, sources et limites</h2>
+  <h3>Sources</h3><ul>
+    <li>Annuaires statistiques de l'enseignement primaire, 2017-2018 à 2024-2025 (DGESS) : écoles, salles, maîtres chargés de cours et élèves par province et par statut ; nature et état des murs ; historique des effectifs depuis 2004-2005.</li>
+    <li>Fichier des statistiques du préscolaire et du primaire 2016-2025 fourni pour le challenge : utilisé pour contrôler les totaux régionaux et nationaux.</li>
+    <li>Tableaux de bord de l'enseignement post-primaire et secondaire ${PPP} et ${PPR} (DGESS) : élèves, établissements, salles, places assises, élèves par classe, enseignants et équipements, par région.</li>
+    <li>Limites administratives COD-AB : contours des provinces et passage au découpage de 2025 (17 régions, 47 provinces).</li></ul>
+  <h3>Échelle</h3><p>Les 45 provinces du découpage en vigueur dans les annuaires. Deux d'entre elles ont été scindées en 2025 (le Soum et la Tapoa) : la fiche de chaque province indique les provinces actuelles correspondantes.</p>
+  <h3>Prévision des effectifs</h3><p>Quatre méthodes ont été mises en concurrence sur le passé : on se place à une année ancienne, on prévoit les années suivantes et on compare au réalisé. Une méthode n'est retenue que si elle fait mieux que la référence « effectif inchangé ». Les provinces sont évaluées en deux groupes, car elles ne se prévoient pas de la même façon. Erreur moyenne pondérée, en % des effectifs :</p>
+  <p><b>${nbGroupe('stable')} provinces stables</b> (aucune chute brutale des effectifs) : l'erreur reste faible.</p>${tableFiab('stable')}
+  <p style="margin-top:14px"><b>${nbGroupe('choc')} provinces ayant subi une chute brutale</b> (fermetures d'écoles) : aucune méthode ne fait mieux que la référence. Leur avenir dépend de la situation sécuritaire, pas d'une tendance : il est traité par scénarios.</p>${tableFiab('choc')}
+  <p>Le scénario « réouverture » suppose que les provinces dont l'effectif a chuté rattrapent progressivement la moitié de l'écart à leur maximum historique.</p>
+  <h3>Répartition optimisée</h3><p>Un programme linéaire en nombres entiers attribue les enseignants et les salles de façon à réduire le nombre d'élèves au-delà des normes en ${HOR}, avec une pénalité qui augmente quand la surcharge s'aggrave : les provinces les plus chargées sont servies d'abord. Un enseignant nouveau doit disposer d'une salle, libre ou construite. Aucune construction n'est programmée là où l'effectif est tombé sous ${nb(100 * M.seuil_acces)} % du maximum historique, signe d'un accès difficile, à confirmer avec les services de l'éducation en situation d'urgence. À pénalité égale, le moyen va à la province la plus chargée : le plan est unique. La comparaison se fait, à moyens strictement égaux, avec deux règles simples : au prorata des élèves attendus, et au prorata des besoins (soumise aux mêmes règles de salle et d'accès). L'optimisation ne réduit pas plus le nombre total d'élèves au-delà de la norme que la règle des besoins ; son apport est l'équité : la province la plus chargée l'est moins et l'écart entre provinces se réduit.</p>
+  <h3>Hypothèses à valider par les services compétents</h3><ul>
+    <li>Normes : ${NM} élèves par maître (norme nationale citée par le tableau de bord de l'enseignement primaire 2023-2024 de la DGESS) ; ${NS} élèves par salle (même valeur, une classe par maître).</li>
+    <li>Coûts unitaires indicatifs : ${nb(M.couts.salle / 1e6, 1)} millions de FCFA par salle (médiane de 5 marchés communaux d'écoles primaires en 2025, Quotidien des marchés publics n° 4226), ${nb(M.couts.enseignant / 1e6, 1)} millions de FCFA par poste et par an (enseignant débutant en zone rurale, salaire et indemnités, hors cotisations employeur : présentation de la coordination nationale EPT, Journée mondiale des enseignants, 6 octobre 2023, p. 6 ; fourchette de 1,8 à 4 millions, ce dernier chiffre étant le coût moyen d'un enseignant en 2019 tous ordres confondus).</li>
+    <li>La part du secteur public dans chaque province reste celle de ${REF}.</li></ul>
+  <h3>Limites</h3><ul>
+    <li>Les données décrivent les écoles ouvertes : dans les provinces touchées par l'insécurité, un ratio élevé peut refléter le regroupement des élèves dans les écoles restées ouvertes.</li>
+    <li>La marge d'incertitude est calculée province par province ; elle est large dans les provinces où les effectifs ont connu des ruptures.</li>
+    <li>La répartition s'arrête à la province : le choix des communes et des écoles relève d'une seconde étape.</li></ul>`;
+}
+
+/* ---------- navigation ---------- */
+const VUES = [['diagnostic', 'Diagnostic'], ['priorites', 'Priorités'], ['besoins', `Besoins en ${HOR.slice(0, 4)}`], ['simulateur', 'Simulateur de répartition'], ['post-primaire', 'Post-primaire'], ['methode', 'Méthode']];
+const RENDU = {diagnostic: rendreDiagnostic, priorites: rendrePriorites, besoins: rendreBesoins, simulateur: rendreSimulateur, 'post-primaire': rendrePostPrimaire, methode: rendreMethode};
+function rendre() {
+  $('onglets').innerHTML = VUES.map(([k, lib]) => `<button role="tab" aria-selected="${k === etat.vue}" data-k="${k}">${lib}</button>`).join('');
+  $('onglets').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { etat.vue = b.dataset.k; rendre(); }));
+  for (const [k] of VUES) $('vue-' + k).hidden = k !== etat.vue;
+  RENDU[etat.vue]();
+}
+$('chapeau').textContent = `Enseignement primaire au Burkina Faso, ${secteur}. Diagnostic par province de 2017-2018 à ${REF}, besoins à la rentrée ${HOR.slice(0, 4)} et simulateur de répartition des moyens nouveaux ; diagnostic régional du post-primaire. Cet outil fonctionne sans connexion.`;
+$('sel-indic').innerHTML = INDIC.map((x, i) => `<option value="${i}">${x.nom}</option>`).join('');
+$('sel-annee').innerHTML = D.annees.map(a => `<option${a === REF ? ' selected' : ''}>${a}</option>`).join('');
+$('sel-indic').addEventListener('change', e => { etat.indic = +e.target.value; rendre(); });
+$('sel-indic-pp').innerHTML = INDIC_PP.map((x, i) => `<option value="${i}">${x.nom}</option>`).join('');
+$('sel-indic-pp').addEventListener('change', e => { etat.indicPP = +e.target.value; rendre(); });
+$('sel-annee').addEventListener('change', e => { etat.annee = e.target.value; rendre(); });
+$('cur-n').addEventListener('input', e => { etat.n = +e.target.value; rendre(); });
+$('cur-m').addEventListener('input', e => { etat.m = +e.target.value; rendre(); });
+{ const [v, p] = decodeURIComponent(location.hash.slice(1)).replace(/^vue=/, '').split('/'); if (RENDU[v]) etat.vue = v; if (p && D.indice[p]) etat.province = p; }
+$('pied').textContent =`Sources : annuaires statistiques de l'enseignement primaire et tableaux de bord du post-primaire et du secondaire (DGESS), limites administratives COD-AB. Normes et coûts : hypothèses modifiables dans le fichier de paramètres.`;
+rendre();
+</script>
+</body>
+</html>

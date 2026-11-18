@@ -1,0 +1,8 @@
+Yennenga — outil d'aide à la décision pour la répartition des enseignants et des salles de classe
+Copyright © 2026 Ouedraogo Daniel Cephas. Tous droits réservés.
+
+Conditions d'utilisation : fichier LICENSE. Toute réutilisation hors de l'évaluation du Data Challenge Burkina 2026
+demande l'autorisation écrite du titulaire des droits.
+
+Ce logiciel s'appuie sur des composants tiers distribués sous leur propre licence (voir requirements.txt et
+interface/package.json).

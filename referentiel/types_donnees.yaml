@@ -1,0 +1,73 @@
+# Catalogue des données que l'outil sait recevoir. Ajouter un type = ajouter un bloc ici, sans toucher au code.
+#
+# niveau      : maille des lignes (province, region ou commune) ; les codes viennent du référentiel territorial
+# cles        : colonnes qui, avec l'année et le territoire, identifient une ligne (ex. statut public / privé / total)
+# variables   : colonnes de valeurs ; min / max : bornes bloquantes ; somme : la variable s'additionne entre territoires
+# ratios      : contrôles d'avertissement (valeur hors fourchette = à vérifier, n'empêche pas l'import)
+# variation_max : écart relatif toléré avec la même valeur de l'année précédente, au-delà = avertissement
+# coherence   : « a = b + c » vérifié à 0,5 % près (avertissement)
+# completude_min : part minimale des territoires du découpage présents pour chaque année (sinon : refus) ;
+#                  les territoires absents sont listés en avertissement
+
+primaire_province:
+  libelle: Effectifs, enseignants et salles du primaire par province
+  source_habituelle: Annuaire statistique de l'éducation de base (DGESS), tableaux par province
+  niveau: province
+  cles:
+    statut: [public, prive, total]
+  variables:
+    ecoles: {libelle: Écoles, min: 0, somme: true}
+    salles: {libelle: Salles de classe, min: 0, somme: true}
+    groupes_pedagogiques: {libelle: Groupes pédagogiques, min: 0, somme: true}
+    maitres: {libelle: Enseignants, min: 0, somme: true}
+    eleves: {libelle: Élèves, min: 0, somme: true}
+    murs_dur: {libelle: Salles en dur, min: 0, somme: true, facultatif: true}
+    murs_semi_dur: {libelle: Salles en semi-dur, min: 0, somme: true, facultatif: true}
+    murs_paille_banco: {libelle: Salles en paille ou banco, min: 0, somme: true, facultatif: true}
+    murs_indetermine: {libelle: Matériau non déclaré, min: 0, somme: true, facultatif: true}
+    murs_bon_etat: {libelle: Salles en bon état, min: 0, somme: true, facultatif: true}
+    murs_mauvais_etat: {libelle: Salles en mauvais état, min: 0, somme: true, facultatif: true}
+    murs_etat_indetermine: {libelle: État non déclaré, min: 0, somme: true, facultatif: true}
+    salles_tableau_murs: {libelle: Salles du tableau des matériaux (peut différer légèrement de « salles »), min: 0, somme: true, facultatif: true}
+  ratios:
+    - {numerateur: eleves, denominateur: maitres, min: 15, max: 150, libelle: élèves par enseignant}
+    - {numerateur: eleves, denominateur: salles, min: 15, max: 150, libelle: élèves par salle}
+  variation_max: 0.30
+  completude_min: 0.9              # une province absente d'un annuaire = aucune école ouverte cette année-là
+  coherence:
+    - {total: total, parties: [public, prive], sur: statut}
+
+serie_effectifs_province:
+  libelle: Élèves du primaire par province (public et privé réunis), séries longues
+  source_habituelle: Annuaires statistiques (tableaux rétrospectifs)
+  niveau: province
+  cles: {}
+  variables:
+    eleves: {libelle: Élèves, min: 0, somme: true}
+  variation_max: 0.30
+  completude_min: 0.9
+
+population_commune:
+  libelle: Population par commune, dont enfants d'âge scolaire
+  source_habituelle: INSD, recensement ou projections
+  niveau: commune
+  cles: {}
+  variables:
+    population: {libelle: Population, min: 0, somme: true}
+    age_6_11: {libelle: Enfants de 6 à 11 ans, min: 0, somme: true}
+    age_12_14: {libelle: Enfants de 12 à 14 ans, min: 0, somme: true}
+  completude_min: 1.0
+  ratios:
+    - {numerateur: age_6_11, denominateur: population, min: 0.08, max: 0.30, libelle: part des 6-11 ans}
+
+deplaces_commune:
+  libelle: Personnes déplacées internes accueillies par commune
+  source_habituelle: CONASUR, situation des personnes déplacées internes par commune d'accueil
+  niveau: commune
+  cles: {}
+  variables:
+    pdi_total: {libelle: Personnes déplacées internes, min: 0, somme: true}
+    pdi_enfants: {libelle: Enfants déplacés (moins de 18 ans), min: 0, somme: true, facultatif: true}
+    pdi_enfants_plus_5: {libelle: Enfants déplacés de plus de 5 ans, min: 0, somme: true, facultatif: true}
+  variation_max: 1.0
+  completude_min: 0.8              # une commune absente du relevé = non relevée (pas zéro déplacé)
